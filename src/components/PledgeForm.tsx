@@ -15,44 +15,51 @@ import {
 } from "@/components/ui/dialog";
 import { Campaign } from "@/types/campaign";
 
-interface ContributeFormProps {
+interface PledgeFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   campaign: Campaign;
 }
 
-interface ContributeFormData {
+interface PledgeFormData {
   amount: number;
   name: string;
   email: string;
   phoneNumber: string;
+  pledgeDate: string;
   message?: string;
 }
 
-export function ContributeForm({ open, onOpenChange, campaign }: ContributeFormProps) {
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<ContributeFormData>();
+export function PledgeForm({ open, onOpenChange, campaign }: PledgeFormProps) {
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<PledgeFormData>();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const onSubmit = async (data: ContributeFormData) => {
+  // Calculate min and max dates
+  const today = new Date().toISOString().split('T')[0];
+  const maxDate = new Date();
+  maxDate.setFullYear(maxDate.getFullYear() + 1);
+  const maxDateString = maxDate.toISOString().split('T')[0];
+
+  const onSubmit = async (data: PledgeFormData) => {
     if (!campaign?.id) return;
     
     setIsLoading(true);
     try {
-      await api.campaigns.contribute(campaign.id, data);
+      await api.campaigns.pledge(campaign.id, data);
       
       toast({
         title: "Thank you!",
-        description: "Your contribution has been received.",
+        description: "Your pledge has been recorded. We'll remind you when it's time to contribute.",
       });
       
       reset();
       onOpenChange(false);
     } catch (error) {
-      console.error('Error contributing:', error);
+      console.error('Error pledging:', error);
       toast({
         title: "Error",
-        description: "Failed to process contribution. Please try again.",
+        description: "Failed to record pledge. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -64,15 +71,15 @@ export function ContributeForm({ open, onOpenChange, campaign }: ContributeFormP
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Contribute to {campaign?.title}</DialogTitle>
+          <DialogTitle>Pledge to {campaign?.title}</DialogTitle>
           <DialogDescription>
-            Support this campaign by making a contribution. All contributions are secure and encrypted.
+            Make a pledge now and contribute later. We'll remind you when your chosen date arrives.
           </DialogDescription>
         </DialogHeader>
         
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="amount">Amount (UGX)</Label>
+            <Label htmlFor="amount">Pledge Amount (UGX)</Label>
             <Input
               id="amount"
               type="number"
@@ -84,6 +91,30 @@ export function ContributeForm({ open, onOpenChange, campaign }: ContributeFormP
             />
             {errors.amount && (
               <p className="text-sm text-red-500">{errors.amount.message}</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="pledgeDate">When would you like to contribute?</Label>
+            <Input
+              id="pledgeDate"
+              type="date"
+              min={today}
+              max={maxDateString}
+              {...register("pledgeDate", { 
+                required: "Please select a date",
+                validate: (value) => {
+                  const date = new Date(value);
+                  const now = new Date();
+                  if (date < now) {
+                    return "Date must be in the future";
+                  }
+                  return true;
+                }
+              })}
+            />
+            {errors.pledgeDate && (
+              <p className="text-sm text-red-500">{errors.pledgeDate.message}</p>
             )}
           </div>
 
@@ -135,12 +166,12 @@ export function ContributeForm({ open, onOpenChange, campaign }: ContributeFormP
             <Textarea
               id="message"
               {...register("message")}
-              placeholder="Leave a message of support"
+              placeholder="Leave a message about your pledge"
             />
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Processing..." : "Contribute"}
+            {isLoading ? "Processing..." : "Confirm Pledge"}
           </Button>
         </form>
       </DialogContent>

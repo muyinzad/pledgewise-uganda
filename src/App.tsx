@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import About from "./pages/About";
 import Login from "./pages/Login";
 import { AdminSettings } from "./pages/AdminSettings";
+import CampaignDetails from "./pages/CampaignDetails";
+import DonationPage from "./pages/DonationPage";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +45,22 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Index />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/campaign/:id"
+                element={
+                  <ProtectedRoute>
+                    <CampaignDetails />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/donate/:id"
+                element={
+                  <ProtectedRoute>
+                    <DonationPage />
                   </ProtectedRoute>
                 }
               />
