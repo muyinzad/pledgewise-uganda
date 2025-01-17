@@ -7,6 +7,7 @@ import { ContributeForm } from "./ContributeForm";
 import { EditCampaignForm } from './EditCampaignForm';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { Users, MapPin, Calendar } from 'lucide-react';
 
 interface CampaignCardProps {
@@ -16,12 +17,21 @@ interface CampaignCardProps {
 export function CampaignCard({ campaign }: CampaignCardProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [progressValue, setProgressValue] = useState(0);
 
-  const raisedAmount = campaign?.raisedAmount || 0;
+  const currentAmount = campaign?.currentAmount || 0;
   const targetAmount = campaign?.targetAmount || 0;
-  const progress = targetAmount > 0 ? (raisedAmount / targetAmount) * 100 : 0;
+  const progress = targetAmount > 0 ? (currentAmount / targetAmount) * 100 : 0;
   const isOwner = user?.id === campaign?.creatorId;
-  const supporters = campaign?.supporters || 0;
+  const contributors = campaign?.supporters || 0;
+
+  // Animate progress bar when value changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setProgressValue(progress);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [progress]);
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't navigate if clicking on buttons
@@ -67,20 +77,21 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
         {/* Progress Section */}
         <div className="space-y-3">
           <div className="flex justify-between text-sm font-medium">
-            <span>UGX {campaign?.raisedAmount?.toLocaleString() || '0'}</span>
-            <span className="text-gray-500">of UGX {campaign?.targetAmount?.toLocaleString() || '0'}</span>
+            <span>UGX {currentAmount.toLocaleString()} contributed</span>
+            <span className="text-gray-500">of UGX {targetAmount.toLocaleString()} goal</span>
           </div>
-          <Progress 
-            value={campaign?.targetAmount && campaign?.raisedAmount 
-              ? Math.min((campaign.raisedAmount / campaign.targetAmount) * 100, 100) 
-              : 0} 
-            className="h-2" 
-          />
+          <div className="relative">
+            <Progress 
+              value={progressValue}
+              className="h-2 transition-all duration-500 ease-out" 
+            />
+            {progressValue >= 100 && (
+              <div className="absolute inset-0 bg-green-500/20 animate-pulse rounded-full" />
+            )}
+          </div>
           <div className="flex justify-between text-sm text-gray-500">
-            <span>{campaign?.targetAmount && campaign?.raisedAmount 
-              ? ((campaign.raisedAmount / campaign.targetAmount) * 100).toFixed(1) 
-              : '0'}% Complete</span>
-            <span>{supporters} supporters</span>
+            <span>{progressValue.toFixed(1)}% Complete</span>
+            <span>{contributors} contributors</span>
           </div>
         </div>
 

@@ -51,21 +51,9 @@ interface SignupData {
 export const api = {
   campaigns: {
     list: async (): Promise<Campaign[]> => {
-      try {
-        const response = await fetch(`${API_URL}/api/campaigns`);
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Failed to fetch campaigns');
-        }
-        const data = await response.json();
-        return data.map((campaign: any) => ({
-          ...campaign,
-          contributionsCount: campaign._count?.contributions || 0
-        }));
-      } catch (error) {
-        console.error('Error fetching campaigns:', error);
-        throw error;
-      }
+      const response = await fetch(`${API_URL}/api/campaigns`);
+      if (!response.ok) throw new Error('Failed to fetch campaigns');
+      return response.json();
     },
     create: async (campaign: Omit<Campaign, 'id' | 'currentAmount' | 'createdAt' | 'updatedAt'>): Promise<Campaign> => {
       const response = await fetch(`${API_URL}/api/campaigns`, {
@@ -82,21 +70,26 @@ export const api = {
     },
     get: async (id: string): Promise<Campaign> => {
       const response = await fetch(`${API_URL}/api/campaigns/${id}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch campaign');
-      }
+      if (!response.ok) throw new Error('Failed to fetch campaign');
       return response.json();
     },
-    contribute: async (campaignId: string, data: ContributionData): Promise<any> => {
+    contribute: async ({ campaignId, amount }: { campaignId: string; amount: number }): Promise<Campaign> => {
       const response = await fetch(`${API_URL}/api/campaigns/${campaignId}/contribute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ 
+          amount,
+          name: "Anonymous",
+          email: "anonymous@example.com",
+          phoneNumber: "1234567890"
+        }),
       });
+      
       if (!response.ok) {
-        throw new Error('Failed to process contribution');
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || 'Failed to process contribution');
       }
       return response.json();
     },

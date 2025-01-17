@@ -23,9 +23,6 @@ interface PledgeFormProps {
 
 interface PledgeFormData {
   amount: number;
-  name: string;
-  email: string;
-  phoneNumber: string;
   pledgeDate: string;
   message?: string;
 }
@@ -99,65 +96,14 @@ export function PledgeForm({ open, onOpenChange, campaign }: PledgeFormProps) {
             <Input
               id="pledgeDate"
               type="date"
-              min={today}
-              max={maxDateString}
               {...register("pledgeDate", { 
-                required: "Please select a date",
-                validate: (value) => {
-                  const date = new Date(value);
-                  const now = new Date();
-                  if (date < now) {
-                    return "Date must be in the future";
-                  }
-                  return true;
-                }
+                required: "Date is required",
+                min: { value: today, message: "Date cannot be in the past" },
+                max: { value: maxDateString, message: "Date cannot be more than a year in the future" }
               })}
             />
             {errors.pledgeDate && (
               <p className="text-sm text-red-500">{errors.pledgeDate.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="name">Your Name</Label>
-            <Input
-              id="name"
-              {...register("name", { required: "Name is required" })}
-              placeholder="Enter your name"
-            />
-            {errors.name && (
-              <p className="text-sm text-red-500">{errors.name.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              {...register("email", { 
-                required: "Email is required",
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: "Invalid email address"
-                }
-              })}
-              placeholder="Enter your email"
-            />
-            {errors.email && (
-              <p className="text-sm text-red-500">{errors.email.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="phoneNumber">Phone Number</Label>
-            <Input
-              id="phoneNumber"
-              {...register("phoneNumber", { required: "Phone number is required" })}
-              placeholder="Enter your phone number"
-            />
-            {errors.phoneNumber && (
-              <p className="text-sm text-red-500">{errors.phoneNumber.message}</p>
             )}
           </div>
 
@@ -167,11 +113,12 @@ export function PledgeForm({ open, onOpenChange, campaign }: PledgeFormProps) {
               id="message"
               {...register("message")}
               placeholder="Leave a message about your pledge"
+              className="min-h-[100px]"
             />
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Processing..." : "Confirm Pledge"}
+            {isLoading ? "Recording Pledge..." : "Confirm Pledge"}
           </Button>
         </form>
       </DialogContent>

@@ -102,8 +102,10 @@ interface ItemListProps {
 
 function ItemList({ items, onDelete, title }: ItemListProps) {
   const { toast } = useToast();
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const handleDelete = async (id: string) => {
+    setIsDeleting(id);
     try {
       await onDelete(id);
       toast({
@@ -116,46 +118,69 @@ function ItemList({ items, onDelete, title }: ItemListProps) {
         description: `Failed to delete ${title.toLowerCase()}`,
         variant: "destructive",
       });
+    } finally {
+      setIsDeleting(null);
     }
   };
 
   return (
     <div className="space-y-4">
-      {items.map((item) => (
-        <Card key={item.id}>
-          <CardHeader className="pb-2">
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle className="text-lg">{item.name}</CardTitle>
-                {item.description && (
-                  <CardDescription>{item.description}</CardDescription>
-                )}
-              </div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete {title}</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete this {title.toLowerCase()}? This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDelete(item.id)}>
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </CardHeader>
-        </Card>
-      ))}
+      {items.length === 0 ? (
+        <p className="text-center text-sm text-muted-foreground py-4">
+          No {title.toLowerCase()}s found
+        </p>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell>{item.description || "-"}</TableCell>
+                  <TableCell>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="hover:bg-destructive/10 hover:text-destructive"
+                          disabled={isDeleting === item.id}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete {title}</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete this {title.toLowerCase()}? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(item.id)}
+                            className="bg-destructive hover:bg-destructive/90"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }
@@ -167,65 +192,52 @@ function ContributionsSection() {
   });
 
   return (
-    <section className="col-span-2">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-semibold">Contributions</h2>
-      </div>
-      <div className="space-y-4">
-        <div className="rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Campaign</TableHead>
-                <TableHead>Contributor</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Message</TableHead>
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Campaign</TableHead>
+            <TableHead>Amount</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead>Status</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {contributions.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={4} className="text-center">
+                No contributions found
+              </TableCell>
+            </TableRow>
+          ) : (
+            contributions.map((contribution: any) => (
+              <TableRow key={contribution.id}>
+                <TableCell className="font-medium">
+                  {contribution.campaign.title}
+                </TableCell>
+                <TableCell>
+                  UGX {contribution.amount?.toLocaleString()}
+                </TableCell>
+                <TableCell>
+                  {new Date(contribution.createdAt).toLocaleDateString()}
+                </TableCell>
+                <TableCell>
+                  <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                    contribution.status === 'completed' 
+                      ? 'bg-green-50 text-green-700'
+                      : contribution.status === 'pending'
+                      ? 'bg-yellow-50 text-yellow-700'
+                      : 'bg-red-50 text-red-700'
+                  }`}>
+                    {contribution.status}
+                  </span>
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {contributions.map((contribution) => (
-                <TableRow key={contribution.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{contribution.campaign.title}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {contribution.campaign.code}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{contribution.name}</TableCell>
-                  <TableCell>
-                    {new Intl.NumberFormat('en-US', {
-                      style: 'currency',
-                      currency: 'UGX'
-                    }).format(contribution.amount)}
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <div>{contribution.email}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {contribution.phoneNumber}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {new Intl.DateTimeFormat('en-US', {
-                      dateStyle: 'medium',
-                      timeStyle: 'short'
-                    }).format(new Date(contribution.createdAt))}
-                  </TableCell>
-                  <TableCell className="max-w-xs truncate">
-                    {contribution.message}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-    </section>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
@@ -236,44 +248,46 @@ function UsersSection() {
   });
 
   return (
-    <section className="col-span-2">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-semibold">Users</h2>
-      </div>
-      <div className="space-y-4">
-        <div className="rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Joined</TableHead>
+    <div className="rounded-md border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Joined</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {users.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={4} className="text-center">
+                No users found
+              </TableCell>
+            </TableRow>
+          ) : (
+            users.map((user: any) => (
+              <TableRow key={user.id}>
+                <TableCell className="font-medium">{user.name}</TableCell>
+                <TableCell>{user.email}</TableCell>
+                <TableCell>
+                  <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                    user.role === 'admin' 
+                      ? 'bg-purple-50 text-purple-700'
+                      : 'bg-blue-50 text-blue-700'
+                  }`}>
+                    {user.role}
+                  </span>
+                </TableCell>
+                <TableCell>
+                  {new Date(user.createdAt).toLocaleDateString()}
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset">
-                      {user.role}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {new Intl.DateTimeFormat('en-US', {
-                      dateStyle: 'medium',
-                      timeStyle: 'short'
-                    }).format(new Date(user.createdAt!))}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-    </section>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
@@ -309,67 +323,100 @@ export function AdminSettings() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50/40">
       <Header />
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <h1 className="text-3xl font-bold">Admin Settings</h1>
+      <div className="container py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+          <p className="text-muted-foreground">
+            Manage your campaign categories, locations, and view contributions
+          </p>
+        </div>
 
-          <div className="grid gap-8 md:grid-cols-2">
-            {/* Categories Section */}
-            <section className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-semibold">Categories</h2>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button>Add Category</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add New Category</DialogTitle>
-                    </DialogHeader>
-                    <ItemForm onSubmit={handleCreateCategory} title="Category" />
-                  </DialogContent>
-                </Dialog>
-              </div>
+        <div className="grid gap-8 md:grid-cols-2">
+          {/* Categories Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Categories</CardTitle>
+              <CardDescription>
+                Manage campaign categories that users can choose from
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="mb-4 w-full">Add New Category</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create Category</DialogTitle>
+                  </DialogHeader>
+                  <ItemForm onSubmit={handleCreateCategory} title="Category" />
+                </DialogContent>
+              </Dialog>
               <ItemList
                 items={categories}
                 onDelete={handleDeleteCategory}
                 title="Category"
               />
-            </section>
+            </CardContent>
+          </Card>
 
-            {/* Locations Section */}
-            <section className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-semibold">Locations</h2>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button>Add Location</Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add New Location</DialogTitle>
-                    </DialogHeader>
-                    <ItemForm onSubmit={handleCreateLocation} title="Location" />
-                  </DialogContent>
-                </Dialog>
-              </div>
+          {/* Locations Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Locations</CardTitle>
+              <CardDescription>
+                Manage available locations for campaigns
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="mb-4 w-full">Add New Location</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create Location</DialogTitle>
+                  </DialogHeader>
+                  <ItemForm onSubmit={handleCreateLocation} title="Location" />
+                </DialogContent>
+              </Dialog>
               <ItemList
                 items={locations}
                 onDelete={handleDeleteLocation}
                 title="Location"
               />
-            </section>
-
-            {/* Users Section */}
-            <UsersSection />
-
-            {/* Contributions Section */}
-            <ContributionsSection />
-          </div>
+            </CardContent>
+          </Card>
         </div>
-      </main>
+
+        {/* Contributions Section - Full Width */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Recent Contributions</CardTitle>
+            <CardDescription>
+              View and manage all campaign contributions
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ContributionsSection />
+          </CardContent>
+        </Card>
+
+        {/* Users Section - Full Width */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>User Management</CardTitle>
+            <CardDescription>
+              View and manage system users
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <UsersSection />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

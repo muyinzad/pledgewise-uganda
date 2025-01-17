@@ -1,20 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { ArrowLeft, CreditCard } from 'lucide-react';
+import { ArrowLeft, CreditCard, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import { Header } from '@/components/Header';
+import Confetti from 'react-confetti';
 
-const DONATION_AMOUNTS = [10000, 20000, 50000, 100000, 150000, 200000];
+const CONTRIBUTION_AMOUNTS = [10000, 20000, 50000, 100000, 150000, 200000];
 const TIP_PERCENTAGES = [10, 12, 14, 16, 18, 20];
 
-export default function DonationPage() {
+export default function ContributionPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -22,6 +23,24 @@ export default function DonationPage() {
   const [tipPercentage, setTipPercentage] = React.useState(14);
   const [paymentMethod, setPaymentMethod] = React.useState('mtn');
   const [isProcessing, setIsProcessing] = React.useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [windowSize, setWindowSize] = useState({
+    width: window.innerWidth,
+    height: window.innerHeight,
+  });
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const { data: campaign } = useQuery({
     queryKey: ['campaign', id],
@@ -32,20 +51,51 @@ export default function DonationPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate amount
+    if (!amount || Number(amount) <= 0) {
+      toast({
+        title: "Invalid amount",
+        description: "Please enter a valid contribution amount.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsProcessing(true);
     
     try {
-      // Simulated API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Make the API call to update the campaign with the new contribution
+      const result = await api.campaigns.contribute({
+        campaignId: id as string,
+        amount: Number(amount),
+      });
+
+      if (!result) {
+        throw new Error('Failed to process contribution');
+      }
+
+      // Invalidate both the single campaign query and the campaigns list query
+      await queryClient.invalidateQueries({ queryKey: ['campaign', id] });
+      await queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+
+      // Show confetti
+      setShowConfetti(true);
+      
       toast({
-        title: "Donation successful!",
+        title: "Contribution successful!",
         description: "Thank you for your generosity.",
       });
-      navigate(`/campaign/${id}`);
-    } catch (error) {
+
+      // Navigate after 5 seconds
+      setTimeout(() => {
+        navigate(`/campaign/${id}`, { replace: true });
+      }, 5000);
+    } catch (error: any) {
+      console.error('Error contributing:', error);
       toast({
         title: "Error",
-        description: "Failed to process donation. Please try again.",
+        description: error?.message || "Failed to process contribution. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -56,6 +106,20 @@ export default function DonationPage() {
   return (
     <div className="min-h-screen bg-white">
       <Header />
+      {showConfetti && (
+        <Confetti
+          width={windowSize.width}
+          height={windowSize.height}
+          recycle={false}
+          numberOfPieces={500}
+          gravity={0.2}
+          tweenDuration={5000}
+          onConfettiComplete={(confetti) => {
+            setShowConfetti(false);
+            confetti?.reset();
+          }}
+        />
+      )}
       <div className="max-w-[580px] mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
@@ -74,7 +138,7 @@ export default function DonationPage() {
             />
             <div>
               <h2 className="font-semibold">You're supporting {campaign?.title}</h2>
-              <p className="text-gray-600 text-sm">Your donation will benefit {campaign?.organizerName}</p>
+              <p className="text-gray-600 text-sm">Your contribution will benefit {campaign?.organizerName}</p>
             </div>
           </div>
         </div>
@@ -84,7 +148,7 @@ export default function DonationPage() {
           <div>
             <h3 className="text-xl font-semibold mb-4">Enter your donation</h3>
             <div className="grid grid-cols-3 gap-3 mb-4">
-              {DONATION_AMOUNTS.map((amt) => (
+              {CONTRIBUTION_AMOUNTS.map((amt) => (
                 <Button
                   key={amt}
                   type="button"
@@ -179,12 +243,15 @@ export default function DonationPage() {
             disabled={isProcessing}
           >
             {isProcessing ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Processing...
-              </span>
+              <div className="flex items-center justify-center">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <span>Processing...</span>
+              </div>
             ) : (
-              "Contribute Now"
+              <div className="flex items-center justify-center">
+                <CreditCard className="mr-2 h-4 w-4" />
+                <span>Contribute Now</span>
+              </div>
             )}
           </Button>
         </form>

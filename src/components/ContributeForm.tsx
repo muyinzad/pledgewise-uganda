@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Campaign } from "@/types/campaign";
+import Confetti from 'react-confetti';
 
 interface ContributeFormProps {
   open: boolean;
@@ -23,15 +24,13 @@ interface ContributeFormProps {
 
 interface ContributeFormData {
   amount: number;
-  name: string;
-  email: string;
-  phoneNumber: string;
   message?: string;
 }
 
 export function ContributeForm({ open, onOpenChange, campaign }: ContributeFormProps) {
   const { register, handleSubmit, reset, formState: { errors } } = useForm<ContributeFormData>();
   const [isLoading, setIsLoading] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
   const { toast } = useToast();
 
   const onSubmit = async (data: ContributeFormData) => {
@@ -41,13 +40,21 @@ export function ContributeForm({ open, onOpenChange, campaign }: ContributeFormP
     try {
       await api.campaigns.contribute(campaign.id, data);
       
+      // Show confetti
+      setShowConfetti(true);
+      
       toast({
         title: "Thank you!",
         description: "Your contribution has been received.",
       });
       
-      reset();
-      onOpenChange(false);
+      // Hide confetti and close dialog after 5 seconds
+      setTimeout(() => {
+        setShowConfetti(false);
+        reset();
+        onOpenChange(false);
+      }, 5000);
+      
     } catch (error) {
       console.error('Error contributing:', error);
       toast({
@@ -61,89 +68,65 @@ export function ContributeForm({ open, onOpenChange, campaign }: ContributeFormP
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Contribute to {campaign?.title}</DialogTitle>
-          <DialogDescription>
-            Support this campaign by making a contribution. All contributions are secure and encrypted.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount (UGX)</Label>
-            <Input
-              id="amount"
-              type="number"
-              {...register("amount", { 
-                required: "Amount is required",
-                min: { value: 1000, message: "Minimum amount is UGX 1,000" }
-              })}
-              placeholder="Enter amount"
-            />
-            {errors.amount && (
-              <p className="text-sm text-red-500">{errors.amount.message}</p>
-            )}
-          </div>
+    <>
+      {showConfetti && (
+        <Confetti
+          recycle={false}
+          numberOfPieces={500}
+          gravity={0.2}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: 1000
+          }}
+        />
+      )}
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Pledge to {campaign?.title}</DialogTitle>
+            <DialogDescription>
+              Make a pledge now and contribute later. We'll remind you when your chosen date arrives.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="amount">Pledge Amount (UGX)</Label>
+              <Input
+                id="amount"
+                type="number"
+                {...register("amount", { 
+                  required: "Amount is required",
+                  min: { value: 1000, message: "Minimum amount is UGX 1,000" }
+                })}
+                placeholder="Enter amount"
+              />
+              {errors.amount && (
+                <p className="text-sm text-red-500">{errors.amount.message}</p>
+              )}
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="name">Your Name</Label>
-            <Input
-              id="name"
-              {...register("name", { required: "Name is required" })}
-              placeholder="Enter your name"
-            />
-            {errors.name && (
-              <p className="text-sm text-red-500">{errors.name.message}</p>
-            )}
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="message">Message (Optional)</Label>
+              <Textarea
+                id="message"
+                {...register("message")}
+                placeholder="Leave a message about your pledge"
+                className="min-h-[100px]"
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              {...register("email", { 
-                required: "Email is required",
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: "Invalid email address"
-                }
-              })}
-              placeholder="Enter your email"
-            />
-            {errors.email && (
-              <p className="text-sm text-red-500">{errors.email.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="phoneNumber">Phone Number</Label>
-            <Input
-              id="phoneNumber"
-              {...register("phoneNumber", { required: "Phone number is required" })}
-              placeholder="Enter your phone number"
-            />
-            {errors.phoneNumber && (
-              <p className="text-sm text-red-500">{errors.phoneNumber.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="message">Message (Optional)</Label>
-            <Textarea
-              id="message"
-              {...register("message")}
-              placeholder="Leave a message of support"
-            />
-          </div>
-
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Processing..." : "Contribute"}
-          </Button>
-        </form>
-      </DialogContent>
-    </Dialog>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Recording Pledge..." : "Confirm Pledge"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
